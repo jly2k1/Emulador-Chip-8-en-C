@@ -109,5 +109,25 @@ void cicloFDE(struct chip8 *c8)
 		 c8->PC += 2;    
 	     }
 	 break;
+	 case 0x5000: //Salta a la siguiente instruccion si los registros X e Y son iguales.
+	     reg_x = (c8->opcode & 0x0F00) >> 8;
+	     reg_y = (c8->opcode & 0x00F0) >> 4; //obtenemos el registro Y.
+
+	     if(c8->V[reg_x] == c8->V[reg_y])
+	     {
+	         c8->PC += 2;
+	     }
+	 break;
+	 case 0x6000: //Coloca el valor de la direccion 'nn' en el registro X.
+	     reg_x = (c8->opcode & 0x0F00) >> 8;
+	     nn = c8->opcode & 0x00FF;
+
+	     c8->V[reg_x] = nn;
+	 break;
+	 case 0x7000: //Suma al registro X lo que haya en 'nn' y guarda el resultado en el registro X.
+	     reg_x = (c8->opcode & 0x0F00) >> 8;
+	     nn = c8->opcode & 0x00FF;
+
+	     c8->V[reg_x] += nn;
      }
 } 
