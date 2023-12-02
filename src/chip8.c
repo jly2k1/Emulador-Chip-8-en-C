@@ -1,5 +1,6 @@
 #include "../include/chip8.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 void ini_cmptes(struct chip8 *c8)
 {
@@ -39,8 +40,11 @@ void ini_cmptes(struct chip8 *c8)
     c8->temp_sonido = 0;
 
     //Limpiar entrada.
-    //
-    //
+    for(int i = 0; i < 16; i++)
+    {
+        c8->teclas[i] = 0; //las teclas no estan siendo presionadas (valor: 0).
+    }
+    
     c8->opcode = 0;
 }
 
@@ -271,22 +275,88 @@ void cicloFDE(struct chip8 *c8)
 	 break;
 	 case 0xE000:
 	     switch(c8->opcode & 0x000F)
-	     {
-	 	    case 0x000E:
-			  //saltar a la siguiente instruccion si X coincide con la tecla presionada.
-	 	    break;
-		    case 0x0001:
-		         //saltar a la siguiente instruccion si X no coincide con la tecla presionada.
+	     { //(!)
+	 	    case 0x000E: //saltar a la siguiente instruccion si X coincide con la tecla presionada.
+			  reg_x = (c8->opcode & 0x0F00) >> 8;
+			 
+			  uint8_t val_x = c8->V[reg_x];
+
+			  if(c8->teclas[val_x] == 1)
+			  {
+			      c8->PC += 2;
+			  }
+		    break;
+		    case 0x0001: //saltar a la siguiente instruccion si X no coincide con la tecla presionada.
+			  reg_x = (c8->opcode & 0x0F00) >> 8;
+
+			  uint8_t val_reg_x = c8->V[reg_x];
+
+			  if(c8->teclas[val_reg_x] == 0)
+			  {
+			      c8->PC += 2;
+			  }
 		    break;
 	     }
 	 case 0xF000:
-	     switch(c8->opcode & 0x000F)
+	     switch(c8->opcode & 0x00FF)
 	     {
 	     	    case 0x0007:
 			  reg_x = (c8->opcode & 0x0F00) >> 8;
 			  
 			  c8->V[reg_x] = c8->temp_delay;
-		    break;	  
-	     } 
+		    break;
+	  	    case 0x000A:
+			//espera por una tecla presionada y la almacena en el registro.
+		    break;
+		    case 0x0015:  //Establece el delay timer igual al registro X.
+			  reg_x = (c8->opcode & 0x0F00) >> 8;
+	                  
+			  c8->temp_delay = c8->V[reg_x];
+		    break;
+		    case 0x0018: //Establece el temporizador de sonido igual al registro X.
+			  reg_x = (c8->opcode & 0x0F00) >> 8;
+      			  
+			  c8->temp_sonido = c8->V[reg_x];
+		    break;
+		    case 0x001E: //Suma el registro I con X y el resultado se guarda en I.
+	     		  reg_x = (c8->opcode & 0x0F00) >> 8;
+
+			  c8->I += c8->V[reg_x];
+		    break;
+		    case 0x0029: //Multiplica el registro X por el largo de un sprite. Se guarda en I.
+		    break;
+		    /*Convierte el valor del registro X en formato decimal y lo almacena en las direcciones
+		     * I, I+1 y I+2. Donde en la posicion de memoria I se guardan las centenas, en 
+		     * I+2 las decenas y en I+3 las unidades.*/
+		    case 0x0033:  
+		   	  reg_x = (c8->opcode & 0x0F00) >> 8;
+			  
+			  c8->RAM[c8->I] = c8->V[reg_x] / 100;
+			  c8->RAM[c8->I+1] = (c8->V[reg_x] / 10) % 10;
+			  c8->RAM[c8->I+2] = c8->V[reg_x] % 10;
+		    break;
+		    /*Guarda en la memoria el contenido de los registros 0 a X, comenzado por la direccion
+		     * I.*/
+		    case 0x0055:  
+		  	  reg_x = (c8->opcode & 0x0F00) >> 8;
+			  
+			  for(int i = 0; i <= reg_x; i++)
+			  {
+			      c8->RAM[c8->I + i] = c8->V[i];
+			  }
+		    break;
+		    /*Guarda en los registros del 0 al X, el contenido de las direcciones de memoria I+n.*/
+		    case 0x0065:
+		   	  reg_x = (c8->opcode & 0x0F00);
+
+			 for(int i = 0; i <= reg_x; i++)
+			 {
+			     c8->V[i] = c8->RAM[c8->I + i]; 
+			 }
+		    break; 
+	     }
+	 break;
+	 default:
+	    printf("Hubo un error al leer el opcode!"); 
      }
 } 

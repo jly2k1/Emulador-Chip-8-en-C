@@ -20,7 +20,7 @@ struct chip8
     uint8_t temp_sonido;
     
     //teclas - controles
-    //
+    uint8_t teclas[16];
 
     //pantalla
     unsigned int pantalla[64 * 32];
