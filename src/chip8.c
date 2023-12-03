@@ -270,8 +270,38 @@ void cicloFDE(struct chip8 *c8)
 
 	     c8->V[reg_x] = valor_aleatorio & nn;
 	 break;
-	 case 0xD000:
-	 //instruccion que pinta un sprite en la pantalla.
+	 case 0xD000: //instruccion que pinta un sprite en la pantalla.
+	    /*La instruccion tiene la forma: DXYN donde 'x' es el registro X, 'y' el registro Y y N la altura del sprite a dibujar.*/
+       	     reg_x = (c8->opcode & 0x0F00) >> 8;
+     	     reg_y = (c8->opcode & 0x00F0) >> 4;
+	     
+    	     uint8_t altura = c8->opcode & 0x000F;
+	     uint16_t pixel; //Aqui es donde vamos a guardar el valor del pixel actual a la hora de estar dibujando.
+	
+	     uint8_t coor_x = c8->V[reg_x]; //Los registros X e Y nos dan las coordenadas donde tenemos que dibujar el sprite
+	     uint8_t coor_y = c8->V[reg_y];
+
+	     c8->V[0xF] = 0; //El registro F es encargado de guardar el estado si hubo una colision.
+ 	     
+	     /*Estos bcules lo que hacen es pintar el sprite segun su anchura y altura, ademas de comprobar si hubo
+	      * una colision.*/
+	     for(int y = 0; y < altura; y++)
+	     {
+	         pixel = c8->RAM[c8->I + y];
+
+		 for(int x = 0; x < 8; x++)
+		 {
+		     if((pixel & (0x80 >> x)) != 0)
+		     {
+		         if(c8->pantalla[(coor_x + x + ((coor_y + y)*64))] == 1)
+			 {
+			     c8->V[0xF] = 1;
+			 }
+
+			 c8->pantalla[coor_x + x + ((coor_y + y)*64)] ^= 1;
+		     }
+		 }
+	     }	     
 	 break;
 	 case 0xE000:
 	     switch(c8->opcode & 0x000F)
