@@ -31,8 +31,10 @@ void ini_cmptes(struct chip8 *c8)
     }
 
     //Cargar fuentes.
-    //
-    // 
+    for(int i = 0; i < 80; i++)
+    {
+        c8->RAM[i] = fontset[i];
+    } 
 
     //Limpiar timers.
 
@@ -88,6 +90,9 @@ int leerROM(struct chip8 *c8, char *romfile)
     {
         c8->RAM[0x200 + i] = rom_buffer[i];
     }
+   
+    //Cerramos el archivo.
+    fclose(file);
 
     return 0;
 }
@@ -291,6 +296,7 @@ void cicloFDE(struct chip8 *c8)
 			 c8->V[reg_x] <<= 1;
 		   break;
 	     }
+	 break;
 	 case 0x9000: //Salta a la siguiente instruccion si el registro X es diferente de Y.
 	     reg_x = (c8->opcode & 0x0F00) >> 8;
 	     reg_y = (c8->opcode & 0x00F0) >> 4;
@@ -374,6 +380,7 @@ void cicloFDE(struct chip8 *c8)
 			  }
 		    break;
 	     }
+	 break;
 	 case 0xF000:
 	     switch(c8->opcode & 0x00FF)
 	     {
@@ -433,7 +440,7 @@ void cicloFDE(struct chip8 *c8)
 		    break;
 		    /*Guarda en los registros del 0 al X, el contenido de las direcciones de memoria I+n.*/
 		    case 0x0065:
-		   	  reg_x = (c8->opcode & 0x0F00);
+		   	  reg_x = (c8->opcode & 0x0F00) >> 8;
 
 			 for(int i = 0; i <= reg_x; i++)
 			 {

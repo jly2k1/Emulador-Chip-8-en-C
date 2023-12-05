@@ -6,10 +6,22 @@ int main()
 {
     struct chip8 c8;
     char *file = "roms/test_opcode.ch8";
+    int cont_bucle = 1;
 
     ini_cmptes(&c8);
 
     leerROM(&c8, file);
+    
+    //Gameloop
+    
+    while(cont_bucle)
+    {
+        cicloFDE(&c8);
+
+	//dibujado y actualizacion de la pantalla (SDL)
+	
+	//Teclas (SDL)
+    }
     /* codigo que muestra el contenido de la rom
     for(int i = 512; i < 4096; i++)
     {
