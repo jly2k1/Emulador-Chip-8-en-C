@@ -59,7 +59,10 @@ void cicloFDE(struct chip8 *c8)
 
      //Obtenemos el opcode. (Fetch)
      c8->opcode = c8->RAM[c8->PC] << 8 | c8->RAM[c8->PC + 1];	
-     
+
+     //Incrementamos el PC para que 'apunte' a la siguiente instrucción.
+     c8->PC += 2;
+
      //Decodificar opcode. (Decode)
 
      switch(c8->opcode & 0xF000)
@@ -283,7 +286,7 @@ void cicloFDE(struct chip8 *c8)
 
 	     c8->V[0xF] = 0; //El registro F es encargado de guardar el estado si hubo una colision.
  	     
-	     /*Estos bcules lo que hacen es pintar el sprite segun su anchura y altura, ademas de comprobar si hubo
+	     /*Estos bucles lo que hacen es pintar el sprite segun su anchura y altura, ademas de comprobar si hubo
 	      * una colision.*/
 	     for(int y = 0; y < altura; y++)
 	     {
