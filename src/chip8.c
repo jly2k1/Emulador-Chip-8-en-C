@@ -47,6 +47,50 @@ void ini_cmptes(struct chip8 *c8)
     
     c8->opcode = 0;
 }
+//Leemos la rom usando las funciones que nos ofrece stdio.h
+int leerROM(struct chip8 *c8, char *romfile)
+{
+    FILE *file;
+    //abrimos el archivo con fopen en el modo 'rb' (rb nos permite leer archivos binarios).
+    file = fopen(romfile,"rb");
+
+    if(file == NULL) //comprobamos que 'file' no este vacio.
+    {
+	printf("Hubo un error al abrir el archivo!");    
+        return -1;
+    }
+    
+    //obtenemos el tamaño de la rom con fseek, ftell y rewind.    
+    fseek(file, 0, SEEK_END);
+    long tam_rom = ftell(file);
+    rewind(file);
+
+    if(tam_rom > 4096) //comprobamos que el tamaño no exceda el limite de la RAM.
+    {
+        fprintf(stderr,"Error. La rom es demasiado grande para la memoria!. \n Intente con otra rom.");
+	fclose(file);
+
+	return -1;
+    }
+
+    char rom_buffer[tam_rom]; //creamos una variable que va a contener los datos de la rom.
+    long contenido = fread(rom_buffer, 1, tam_rom, file); //obtenemos dichos datos con fread.
+
+    if(contenido != tam_rom) //comprobamos que todos los datos hayan sido leidos correctamente.
+    {
+        fprintf(stderr,"Error. Hubo un error al leer la rom!.");
+
+	return -1;
+    }
+    
+    //Por ultimo, colocamos los datos de la rom en la RAM, tal como se especifica en la documentacion del Chip-8
+    for(int i = 0; i < tam_rom; i++) 
+    {
+        c8->RAM[0x200 + i] = rom_buffer[i];
+    }
+
+    return 0;
+}
 
 void cicloFDE(struct chip8 *c8)
 {
@@ -338,8 +382,17 @@ void cicloFDE(struct chip8 *c8)
 			  
 			  c8->V[reg_x] = c8->temp_delay;
 		    break;
-	  	    case 0x000A:
-			//espera por una tecla presionada y la almacena en el registro.
+	  	    case 0x000A://espera por una tecla presionada y la almacena en el registro. (!)
+			  reg_x = (c8->opcode & 0x0F00) >> 8;
+
+			  for(int i = 0; i < 16; i++)
+			  {
+			      if(c8->teclas[i] == 1)
+			      {
+			          c8->V[reg_x] = i;
+			      }
+			  }
+
 		    break;
 		    case 0x0015:  //Establece el delay timer igual al registro X.
 			  reg_x = (c8->opcode & 0x0F00) >> 8;

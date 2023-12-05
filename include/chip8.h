@@ -6,7 +6,7 @@
 struct chip8
 {
     //Memoria ram	
-    char RAM[4096];
+    uint8_t RAM[4096];
     
     //Registros
     uint8_t V[16];
@@ -33,7 +33,7 @@ struct chip8
 void ini_cmptes(struct chip8 *c8);
 void cicloFDE(struct chip8 *c8);
 //funciones de reinicio, entrada del teclado, lectura de roms, timers..
-//
+int leerROM(struct chip8 *c8 ,char *romfile);
 //
 //
 //
