@@ -1,6 +1,7 @@
 #include "../include/chip8.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <SDL2/SDL.h>
 
 void ini_cmptes(struct chip8 *c8)
 {
@@ -34,7 +35,10 @@ void ini_cmptes(struct chip8 *c8)
     for(int i = 0; i < 80; i++)
     {
         c8->RAM[i] = fontset[i];
-    } 
+    }
+    
+    //Establecer la bandera de dibujado en cero. 
+    c8->drawFlag = 0;
 
     //Limpiar timers.
 
@@ -124,13 +128,18 @@ void cicloFDE(struct chip8 *c8)
 			 {
 			     c8->pantalla[i] = 0;
 			 }
+
+			 c8->drawFlag = 1;
+			 c8->PC +=2;
+
+			 printf("Se ejecuta esto");
 		 break;
 		 case 0x00EE: //Retorno de un subrutina.
 		         c8->SP--; //se decrementa el SP en 1.
 			 //En PC se guarda la direccion a la que apunta SP en la pila en ese momento.	   
 			 c8->PC = c8->Pila[c8->SP]; 
 			 //Al ocurrir eso el PC se incrementa en dos.
-			 c8->PC += 2;
+			 //c8->PC += 2;
 		 break;
 	     }
 	 break;
@@ -140,14 +149,14 @@ void cicloFDE(struct chip8 *c8)
 	     c8->PC = nnn; //establecemos el PC con dicha direccion
 	 break;
 	 case 0x2000:
-	     c8->Pila[c8->SP] = c8->SP;
-	     c8->SP++;
-
 	     nnn = c8->opcode & 0x0FFF;
+
+	     c8->Pila[c8->SP] = c8->PC;
+	     c8->SP++;
 
 	     c8->PC = nnn;
 	 break;
-	 case 0x3000: //Salta a la siguiente instruccion si el registro Vx es igual a la direccion nn (!)
+	 case 0x3000: //Salta a la siguiente instruccion si el registro Vx es igual a la direccion nn
              //obtenemos el registro en cuestion
      	     reg_x = (c8->opcode & 0x0F00) >> 8;
 	     nn = c8->opcode & 0x00FF; //obtenemos la direccion nn.
@@ -314,12 +323,13 @@ void cicloFDE(struct chip8 *c8)
 	 case 0xB000: //Salta a la ubicacion resultante de la suma del registro 0 mas la direccion nnn.
 	     nnn = c8->opcode & 0x0FFF;
 
-	     c8->PC = c8->V[0x0] + nnn;
+	     c8->PC = (c8->V[0x0] + nnn);
 	 break; //Se genera un numero aleatorio y con un '&' con la direccion 'nn' y el resultado se guarda en X
-	     uint8_t valor_aleatorio = rand() + 256;
-	     
+	 case 0xC000:    	    
 	     reg_x = (c8->opcode & 0x0F00) >> 8;
 	     nn = c8->opcode & 0x00FF;
+
+	     uint8_t valor_aleatorio = rand() % 256;
 
 	     c8->V[reg_x] = valor_aleatorio & nn;
 	 break;
@@ -354,7 +364,10 @@ void cicloFDE(struct chip8 *c8)
 			 c8->pantalla[coor_x + x + ((coor_y + y)*64)] ^= 1;
 		     }
 		 }
-	     }	     
+	     }
+ 	     
+	     /*A la bandera de dibujado le asignamos un '1' para indicar que se ah ejecutado esta instruccion.*/
+	     c8->drawFlag = 1;	     
 	 break;
 	 case 0xE000:
 	     switch(c8->opcode & 0x000F)
@@ -417,6 +430,9 @@ void cicloFDE(struct chip8 *c8)
 			  c8->I += c8->V[reg_x];
 		    break;
 		    case 0x0029: //Multiplica el registro X por el largo de un sprite. Se guarda en I.
+			reg_x = (c8->opcode & 0x0F00) >> 8;
+
+			c8->I = (c8->V[reg_x] * 0x5);
 		    break;
 		    /*Convierte el valor del registro X en formato decimal y lo almacena en las direcciones
 		     * I, I+1 y I+2. Donde en la posicion de memoria I se guardan las centenas, en 
@@ -452,4 +468,96 @@ void cicloFDE(struct chip8 *c8)
 	 default:
 	    printf("Hubo un error al leer el opcode!"); 
      }
-} 
+}
+
+/*Manejo de graficos. (SDL 2)*/
+
+//Creacion de ventana e inicializacion de render y textura.
+int ventana(struct graficos *graf)
+{
+    if(SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+       fprintf(stderr,"Hubo un error al iniciar SDL: %s \n",SDL_GetError());
+       return -1;
+    }
+    
+    graf->ventana = NULL;
+
+    graf->ventana = SDL_CreateWindow("Emulador Chip-8",SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 64*10, 32*10, SDL_WINDOW_SHOWN);
+
+    if(graf->ventana == NULL)
+    {
+        fprintf(stderr,"Hubo un error al crear la ventana: %s \n",SDL_GetError());
+    }
+
+    graf->render = NULL;
+
+    graf->render = SDL_CreateRenderer(graf->ventana, -1, SDL_RENDERER_ACCELERATED);
+    
+    if(graf->render == NULL)
+    {
+        fprintf(stderr,"Hubo un error con el renderizador: %s \n",SDL_GetError());
+    }
+
+    graf->textura = NULL;
+
+    graf->textura = SDL_CreateTexture(graf->render,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+
+    if(graf->textura == NULL)
+    {
+        fprintf(stderr,"Hubo un error al crear la textura: %s \n",SDL_GetError());
+    }
+
+    return 0;    
+}
+
+//Actualizacion de la textura cuando se ejecuta la instruccion de dibujo.
+void actualizar(struct chip8 *c8, struct graficos *graf)
+{
+   /*Creamos un arreglo llamado 'pixels' que utilizaremos para representar los pixeles que hay que actualizar*/	
+    uint32_t pixels[64*32];
+
+    unsigned int x, y; //variables que representan la posicion x,y de la pantalla.
+
+    memset(pixels, 0, (64*32) * 4); //inicializamos el arreglo con ceros usando esta función.
+    
+    /*Recorremos el arreglo que emula la pantalla del chip-8. Esto para saber que pixeles han cambiado.*/
+    for(x = 0; x < 64; x++)
+    {
+        for(y = 0; y < 32; y++)
+	{
+	    if(c8->pantalla[(x) + ((y) * 64)] == 1) //Si un pixel a tomado el valor de '1'.
+	    {
+		//entonces 'copiamos' ese valor en el arreglo pixels.    
+	        pixels[(x) + ((y) * 64)] = UINT32_MAX;
+	    }
+	}
+    }
+	
+    //Actualizamos la textura. Con lo anterior, SDL le asignará el color 'blanco' o 'negro' a los pixeles.
+    SDL_UpdateTexture(graf->textura, NULL, pixels, (64*sizeof(uint32_t)));
+    
+    //Posicionamos la textura para que ocupe toda la ventana.
+    SDL_Rect position;
+
+    position.x = 0;
+    position.y = 0;
+
+    position.w = 640;
+    position.h = 320;
+    
+    //Pasamos la textura al render y lo actualizamos.
+    SDL_RenderCopy(graf->render, graf->textura, NULL, &position);
+    SDL_RenderPresent(graf->render);
+    
+    //Volvemos a poner la bandera de dibujo en 0.
+    c8->drawFlag = 0;
+}
+
+//Cuando se cierre la ventana, hay que liberar recursos con Destroy.
+void cerrar(struct graficos *graf)
+{
+    SDL_DestroyTexture(graf->textura);
+    SDL_DestroyRenderer(graf->render);
+    SDL_DestroyWindow(graf->ventana);
+}

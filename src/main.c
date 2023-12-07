@@ -1,37 +1,46 @@
 #include "../include/chip8.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include <SDL2/SDL.h>
 
 int main()
 {
     struct chip8 c8;
+    struct graficos graf;
     char *file = "roms/test_opcode.ch8";
-    int cont_bucle = 1;
 
-    ini_cmptes(&c8);
+    ini_cmptes(&c8); //Inicializacion de componentes del chip-8
 
     leerROM(&c8, file);
     
-    //Gameloop
+    ventana(&graf); //Creamos la ventana donde se visualizaran los graficos.
     
-    while(cont_bucle)
+    SDL_Event e;
+
+    int quit = 0;
+
+    //Gameloop
+
+    while(!quit)
     {
         cicloFDE(&c8);
 
 	//dibujado y actualizacion de la pantalla (SDL)
-	
-	//Teclas (SDL)
-    }
-    /* codigo que muestra el contenido de la rom
-    for(int i = 512; i < 4096; i++)
-    {
-        printf("%i  ", c8.RAM[i]);	
-
-	if(i % 5 == 0)
+        if(c8.drawFlag)
 	{
-	    printf("\n");
+	    actualizar(&c8, &graf);
+	}	
+	//Teclas (SDL)
+	
+        while(SDL_PollEvent(&e) != 0)
+	{
+	    if(e.type == SDL_QUIT)
+	    {
+	        quit = 1;
+		cerrar(&graf);
+	    }
 	}
-    }*/
 
+	SDL_Delay(16); //Esta funcion hace que el programa corra a una velocidad determinada de FPS.
+    }
+    
    return 0; 
 }
