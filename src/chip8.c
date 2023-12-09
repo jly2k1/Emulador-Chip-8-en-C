@@ -1,7 +1,6 @@
 #include "../include/chip8.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <SDL2/SDL.h>
 
 void ini_cmptes(struct chip8 *c8)
 {
@@ -26,7 +25,7 @@ void ini_cmptes(struct chip8 *c8)
 
     //Limpiar pantalla;
     
-    for(int i = 0; i < 62*32; i++)
+    for(int i = 0; i < 64*32; i++)
     {
         c8->pantalla[i] = 0;
     }
@@ -130,16 +129,12 @@ void cicloFDE(struct chip8 *c8)
 			 }
 
 			 c8->drawFlag = 1;
-			 c8->PC +=2;
-
-			 printf("Se ejecuta esto");
 		 break;
 		 case 0x00EE: //Retorno de un subrutina.
 		         c8->SP--; //se decrementa el SP en 1.
 			 //En PC se guarda la direccion a la que apunta SP en la pila en ese momento.	   
 			 c8->PC = c8->Pila[c8->SP]; 
-			 //Al ocurrir eso el PC se incrementa en dos.
-			 //c8->PC += 2;
+			
 		 break;
 	     }
 	 break;
@@ -227,15 +222,17 @@ void cicloFDE(struct chip8 *c8)
 		  * establece el registro F en 1. En caso de que no se de el acarreo, F se establece en
 		  * 0.*/
 		 case 0x0004: //(!)
-			 reg_x = (c8->opcode & 0x0F00) >> 8;
-			 reg_y = (c8->opcode & 0x00F0) >> 4;
-
-			 c8->V[reg_x] += c8->V[reg_y];
+			 reg_x = (c8->opcode & 0x0F00u) >> 8u;
+			 reg_y = (c8->opcode & 0x00F0u) >> 4u;
+                         
+			 uint16_t suma = (c8->V[reg_x] + c8->V[reg_y]);
+                          
+                         c8->V[reg_x] = suma;
 
 			 /*Para saber si hay un acarreo, hay que comprobar si se supero el valor máximo
 			  * que pueden guardar nuestros registros de 8 bits. Eso es, comprobar si su
 			  * suma supera el valor 255*/
-			 if(c8->V[reg_x] + c8->V[reg_y] > 255)
+			 if(suma > 255U)
 			 {
 			     c8->V[0xF] = 1;
 			 }
@@ -243,6 +240,7 @@ void cicloFDE(struct chip8 *c8)
 			 {
 			     c8->V[0xF] = 0;
 			 }
+
 		   break;
 		   /*Realiza la resta de los registros X e Y, guarda el resultado en X y si hubo un 'prestamo'
 		    * establece el registro de F en 0. En caso de que no se diese un prestamo, F se establece
@@ -250,30 +248,43 @@ void cicloFDE(struct chip8 *c8)
 		   case 0x0005:
 		   	 reg_x = (c8->opcode & 0x0F00) >> 8;
 			 reg_y = (c8->opcode & 0x00F0) >> 4;
-
+                        
+                         c8->V[reg_x] -= c8->V[reg_y];
+ 			 
 		 	 /*Para saber si va haber un prestamo, comprobamos si el valor del registro X
 			  * es mayor al del Y. En caso de serlo no habrá prestamo y en caso contrario
 			  * si lo hará.*/
+
+			// printf("%i", c8->V[0xF]);
 			 if(c8->V[reg_x] > c8->V[reg_y]) //(!)
 			 {
-			     c8->V[0xF] = 1;
+			     c8->V[0xF] = 0;
+			 }
+			 else
+			 {
+			     c8->V[0xF] = 0x1; 
+			 }
+		   break;
+		   /*Guarda el bit menos significativo del registro X en el registro F y desplaza un 1 bit
+		    * hacia la derecha el registro X.*/
+		   case 0x0006: 
+		         reg_x = (c8->opcode & 0x0F00) >> 8; 
+                         
+                         uint8_t BMS = 0;
+
+			 //obtenemos el dicho bit utilizando el operador '&' y el valor 0x1.
+			 BMS = (c8->V[reg_x] & 0x0001); //hacemos el desplazamiento
+		         
+			 c8->V[reg_x] >>= 1;
+
+			 if(BMS == 1)
+			 {
+			     c8->V[0xF] = 0x0001;
 			 }
 			 else
 			 {
 			     c8->V[0xF] = 0;
 			 }
-
-			 c8->V[reg_x] -= c8->V[reg_y];
-		   break;
-		   /*Guarda el bit menos significativo del registro X en el registro F y desplaza un 1 bit
-		    * hacia la derecha el registro X.*/
-		   case 0x0006: 
-		         reg_x = (c8->opcode & 0x0F00) >> 8;
-			 
-			 //obtenemos el dicho bit utilizando el operador '&' y el valor 0x1.
-			 c8->V[0xF] = c8->V[reg_x] & 0x1;
-			 
-			 c8->V[reg_x] >>= 1; //hacemos el desplazamiento
 		   break;
 		   /*Comprueba si el registro Y es mayor al registro X. En caso de serlo el registro
 		    * F = 1 y en caso de no serlo F = 0. Se resta el registro Y con X y se guarda
@@ -281,6 +292,8 @@ void cicloFDE(struct chip8 *c8)
 		   case 0x0007:
 		         reg_x = (c8->opcode & 0x0F00) >> 8;
 			 reg_y = (c8->opcode & 0x00F0) >> 4;
+			
+			 c8->V[reg_x] = c8->V[reg_y] - c8->V[reg_x];
 
 			 if(c8->V[reg_y] > c8->V[reg_x])
 			 {
@@ -291,19 +304,29 @@ void cicloFDE(struct chip8 *c8)
 			     c8->V[0xF] = 0;
 			 }
 
-			 c8->V[reg_x] = c8->V[reg_y] - c8->V[reg_x];
-		   break;
+			  break;
 		   /*Esta instruccion es similar a 8XY6, solo que aqui obtenemos el bit mas significativo
 		    * de X y lo guardamos en F*/
 		   case 0x000E:
 		         reg_x = (c8->opcode & 0x0F00) >> 8;
 			 
-			 //obtenemos el bit mas significativo
-			 c8->V[0xF] = (c8->V[reg_x] & 0x80) >> 7;
-                         
-			 //desplazamos una posicion hacia la izquierda.
+			 uint8_t BMSS = 0;
+
+			 BMSS = (c8->V[reg_x] & 255);
+					 
+                         BMSS >>= 7;
+			 
 			 c8->V[reg_x] <<= 1;
-		   break;
+                         
+			 if(BMSS == 1)
+			 {
+			     c8->V[0xF] = 0x0001; 
+			 }
+			 else
+			 {
+			     c8->V[0xF] = 0;
+			 }
+		 break;
 	     }
 	 break;
 	 case 0x9000: //Salta a la siguiente instruccion si el registro X es diferente de Y.
@@ -341,8 +364,8 @@ void cicloFDE(struct chip8 *c8)
     	     uint8_t altura = c8->opcode & 0x000F;
 	     uint16_t pixel; //Aqui es donde vamos a guardar el valor del pixel actual a la hora de estar dibujando.
 	
-	     uint8_t coor_x = c8->V[reg_x]; //Los registros X e Y nos dan las coordenadas donde tenemos que dibujar el sprite
-	     uint8_t coor_y = c8->V[reg_y];
+	     uint8_t coor_x = c8->V[reg_x] % 64; //Los registros X e Y nos dan las coordenadas donde tenemos que dibujar el sprite
+	     uint8_t coor_y = c8->V[reg_y] % 32;
 
 	     c8->V[0xF] = 0; //El registro F es encargado de guardar el estado si hubo una colision.
  	     
@@ -356,12 +379,14 @@ void cicloFDE(struct chip8 *c8)
 		 {
 		     if((pixel & (0x80 >> x)) != 0)
 		     {
-		         if(c8->pantalla[(coor_x + x + ((coor_y + y)*64))] == 1)
+		         int index = ((coor_x + x)%64)+(((coor_y + y) % 32) *64);
+
+			 if(c8->pantalla[index] == 1)
 			 {
 			     c8->V[0xF] = 1;
 			 }
 
-			 c8->pantalla[coor_x + x + ((coor_y + y)*64)] ^= 1;
+			 c8->pantalla[index] ^= 1;
 		     }
 		 }
 	     }
@@ -549,9 +574,6 @@ void actualizar(struct chip8 *c8, struct graficos *graf)
     //Pasamos la textura al render y lo actualizamos.
     SDL_RenderCopy(graf->render, graf->textura, NULL, &position);
     SDL_RenderPresent(graf->render);
-    
-    //Volvemos a poner la bandera de dibujo en 0.
-    c8->drawFlag = 0;
 }
 
 //Cuando se cierre la ventana, hay que liberar recursos con Destroy.
@@ -560,4 +582,17 @@ void cerrar(struct graficos *graf)
     SDL_DestroyTexture(graf->textura);
     SDL_DestroyRenderer(graf->render);
     SDL_DestroyWindow(graf->ventana);
+}
+
+void actualizar_timers(struct chip8 *c8)
+{
+    if(c8->temp_delay > 0)
+    {
+        c8->temp_delay--;
+    }
+
+    if(c8->temp_sonido > 0)
+    {
+        c8->temp_sonido--;
+    }
 }

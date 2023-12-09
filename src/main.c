@@ -1,20 +1,19 @@
 #include "../include/chip8.h"
-#include <SDL2/SDL.h>
+#include <time.h>
 
 int main()
 {
     struct chip8 c8;
     struct graficos graf;
-    char *file = "roms/test_opcode.ch8";
+    char *file = "roms/Space_Invaders.ch8";
 
     ini_cmptes(&c8); //Inicializacion de componentes del chip-8
-
     leerROM(&c8, file);
     
-    ventana(&graf); //Creamos la ventana donde se visualizaran los graficos.
-    
+     ventana(&graf); //Creamos la ventana donde se visualizaran los graficos.
+        
     SDL_Event e;
-
+	
     int quit = 0;
 
     //Gameloop
@@ -22,25 +21,47 @@ int main()
     while(!quit)
     {
         cicloFDE(&c8);
+        actualizar_timers(&c8);	
 
-	//dibujado y actualizacion de la pantalla (SDL)
-        if(c8.drawFlag)
+        while(SDL_PollEvent(&e))
 	{
-	    actualizar(&c8, &graf);
-	}	
-	//Teclas (SDL)
-	
-        while(SDL_PollEvent(&e) != 0)
-	{
+            if(e.type == SDL_KEYDOWN)
+	    {
+	        for(int i = 0; i < 16; i++)
+		{
+		    if(e.key.keysym.sym == mapeo_teclas[i])
+		    {
+		        c8.teclas[i] = 1;
+		    }
+		}
+	    }
+
+	    if(e.type == SDL_KEYUP)
+	    {
+	        for(int i = 0; i < 16; i++)
+		{
+		    if(e.key.keysym.sym == mapeo_teclas[i])
+		    {
+		        c8.teclas[i] = 0;
+		    }
+		}
+	    }
+	  
 	    if(e.type == SDL_QUIT)
 	    {
 	        quit = 1;
-		cerrar(&graf);
 	    }
 	}
 
-	SDL_Delay(16); //Esta funcion hace que el programa corra a una velocidad determinada de FPS.
+        //dibujado y actualizacion de la pantalla (SDL)
+        if(c8.drawFlag)
+	{
+	    c8.drawFlag = 0;	
+	    actualizar(&c8, &graf);
+	}
+      
+	usleep(3000);
     }
-    
+
    return 0; 
 }

@@ -33,6 +33,27 @@ struct chip8
     uint16_t opcode;
 };
 
+//Arreglo que mapea las teclas.
+static uint8_t mapeo_teclas[16] = 
+{
+    SDLK_0, 
+    SDLK_1, 
+    SDLK_2, 
+    SDLK_3, 
+    SDLK_4, 
+    SDLK_5, 
+    SDLK_6, 
+    SDLK_7, 
+    SDLK_8, 
+    SDLK_9, 
+    SDLK_a, 
+    SDLK_s, 
+    SDLK_d,
+    SDLK_z, 
+    SDLK_x, 
+    SDLK_c 
+}; 
+
 //Struct relacionado con la parte grafica (SDL 2).
 struct graficos
 {
@@ -66,6 +87,7 @@ static uint8_t fontset[80] =
 void ini_cmptes(struct chip8 *c8);
 void cicloFDE(struct chip8 *c8);
 int leerROM(struct chip8 *c8 ,char *romfile);
+void actualizar_timers(struct chip8 *c8);
 
 //Parte grafica.
 int ventana(struct graficos *graf);
