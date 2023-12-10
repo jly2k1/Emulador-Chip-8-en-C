@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <SDL2/SDL.h>
+#include <math.h>
 
 struct chip8
 {
@@ -89,9 +90,13 @@ void cicloFDE(struct chip8 *c8);
 int leerROM(struct chip8 *c8 ,char *romfile);
 void actualizar_timers(struct chip8 *c8);
 
+
 //Parte grafica.
 int ventana(struct graficos *graf);
 void actualizar(struct chip8 *c8, struct graficos *graf);
 void cerrar(struct graficos *graf);
+
+//Menu simple.
+void seleccion_juego(char *juego);
 
 #endif

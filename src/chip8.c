@@ -1,6 +1,7 @@
 #include "../include/chip8.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 void ini_cmptes(struct chip8 *c8)
 {
@@ -594,5 +595,15 @@ void actualizar_timers(struct chip8 *c8)
     if(c8->temp_sonido > 0)
     {
         c8->temp_sonido--;
+        //beep!
     }
 }
+
+void seleccion_juego(char *juego)
+{
+     printf("Emulador chip-8. \n");
+     
+     printf("Escribe el nombre del juego que quiera ejecutar:");
+     scanf("%30s",juego);
+}
+

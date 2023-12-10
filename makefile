@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -c -Wall -Wextra
-LDFLAGS = -L/usr/lib -lSDL2
+CFLAGS = -Wall -Wextra
+LDFLAGS = -L/usr/lib -lSDL2 -lm
 
 SRCS = src/main.c src/chip8.c 
 OBJS = $(SRCS:.c=.o)
